@@ -42,6 +42,9 @@ const estimateSchema = new mongoose.Schema({
   salesPerson: { type: String, default: 'Admin' },
   paymentTerms: { type: String, default: '7 Days' },
   notes: { type: String, default: '' },
+  category: { type: String, default: 'FLEX' },
+  flexData: { type: mongoose.Schema.Types.Mixed, default: null },
+  digitalData: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 const Estimate = mongoose.model('Estimate', estimateSchema);

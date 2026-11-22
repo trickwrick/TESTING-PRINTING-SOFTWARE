@@ -80,6 +80,7 @@ export default function Estimates() {
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeCategory, setActiveCategory] = useState('FLEX');
   const [prices, setPrices] = useState({});
   const [saveStatus, setSaveStatus] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -212,11 +213,36 @@ export default function Estimates() {
     );
   };
 
-  const filteredEstimates = estimates.filter((item) =>
-    item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.jobName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.quoteNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const CATEGORY_TABS = [
+    { id: 'FLEX', label: 'FLEX' },
+    { id: 'Digital', label: 'Digital' },
+    { id: 'Offset', label: 'Offset' },
+    { id: 'Other Items', label: 'Other Items' },
+    { id: 'LED / SINAGE', label: 'LED / SINAGE' },
+    { id: 'General Items', label: 'General Items' },
+  ];
+
+  const getCategoryCount = (catId) => {
+    return estimates.filter((item) => {
+      const itemCat = item.category || item.department || '';
+      if (!itemCat) {
+        return catId === 'FLEX';
+      }
+      return itemCat.toLowerCase() === catId.toLowerCase();
+    }).length;
+  };
+
+  const filteredEstimates = estimates.filter((item) => {
+    const matchesSearch =
+      item.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.jobName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.quoteNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const itemCat = item.category || item.department || '';
+    const matchesCat = !itemCat ? activeCategory === 'FLEX' : itemCat.toLowerCase() === activeCategory.toLowerCase();
+
+    return matchesSearch && matchesCat;
+  });
 
   const selectedPrice = selectedEstimate ? Number(prices[selectedEstimate._id] ?? selectedEstimate.totalAmount ?? 0) : 0;
   const printItems = selectedEstimate ? getEstimateLineItems(selectedEstimate) : [];
@@ -252,7 +278,42 @@ export default function Estimates() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-t-3xl border-x border-t border-gray-50 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+      {/* Category Tabs */}
+      <div className="bg-white border-b border-gray-200 overflow-x-auto rounded-t-3xl shadow-sm">
+        <div className="flex items-center min-w-max border-b border-gray-200">
+          {CATEGORY_TABS.map((tab) => {
+            const isActive = activeCategory === tab.id;
+            const count = getCategoryCount(tab.id);
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCategory(tab.id)}
+                className={`relative px-6 py-3.5 text-sm font-bold flex items-center gap-2.5 transition-all select-none border-b-2 ${
+                  isActive
+                    ? 'bg-[#29c5d7] text-white border-[#f43f5e] shadow-xs'
+                    : 'bg-white text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-50/80'
+                }`}
+              >
+                <span className="tracking-wide">{tab.label}</span>
+                <span
+                  className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-black transition-colors ${
+                    isActive
+                      ? 'bg-black/30 text-white'
+                      : 'bg-gray-500 text-white'
+                  }`}
+                >
+                  {count}
+                </span>
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.75 bg-[#f43f5e]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white p-4 border-x border-gray-50 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <div className="relative w-full lg:max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" size={18} />
           <input

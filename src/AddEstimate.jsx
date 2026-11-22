@@ -12,6 +12,8 @@ import PaymentTypeSection from './components/PaymentTypeSection';
 import { usePaymentTypes } from './utils/usePaymentTypes';
 import { API_BASE_URL } from './utils/apiBase';
 import GSTInput from './components/GSTInput';
+import FlexCalculatorSection from './components/FlexCalculatorSection';
+import DigitalCalculatorSection from './components/DigitalCalculatorSection';
 
 const EMPTY_PARTY_FORM = {
   partyName: '',
@@ -106,6 +108,12 @@ const AddEstimate = () => {
     reverseCharge: editData?.reverseCharge || 'No',
     paymentType: editData?.paymentType || '',
   });
+
+  const [activeCategoryTab, setActiveCategoryTab] = useState(
+    location.state?.category || editData?.category || 'FLEX'
+  );
+  const [flexData, setFlexData] = useState(editData?.flexData || null);
+  const [digitalData, setDigitalData] = useState(editData?.digitalData || null);
 
   const [items, setItems] = useState(() => normalizeEstimateItems(editData));
   const [masterItems, setMasterItems] = useState([]);
@@ -296,6 +304,106 @@ const AddEstimate = () => {
   };
 
   const buildEstimatePayload = (jobCardNumber = '') => {
+    // If category is FLEX and we have flexData, use flex calculated totals and lines
+    if (activeCategoryTab === 'FLEX' && flexData) {
+      const flexLines = (flexData.rows || []).map((r) => ({
+        description: r.description || (r.mediaType ? `${r.mediaType} Flex Printing` : 'Flex Banner Printing'),
+        descriptionNote: `Size: ${r.widthVal || 0}${r.widthUnit} x ${r.heightVal || 0}${r.heightUnit} (${r.areaFt || 0} Sq.Ft.)`,
+        hsn: r.hsn || '4911',
+        qty: Number(r.qty) || 1,
+        rate: Number(r.rateSqFt) || 0,
+        per: 'SQ.FT',
+        total: Number(r.total) || Number(r.amount) || 0,
+        gstPercent: r.includeGst ? Number(r.taxPercent) || 18 : 0,
+        gstAmount: Number(r.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(flexData.finalBill) || Number(flexData.grandTotal) || 0;
+      const flexJobName = flexLines.map((l) => l.description).join(' / ') || 'Flex Printing';
+      const totalAreaQty = (flexData.rows || []).reduce((s, r) => s + (Number(r.qty) || 0), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'FLEX',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: flexLines,
+        subTotal: Number(flexData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: flexData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(flexData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (flexData.receipts?.[0]?.mode || ''),
+        jobName: flexJobName,
+        jobQty: String(totalAreaQty || 1),
+        flexData,
+      };
+    }
+
+    // If category is Digital and we have digitalData
+    if (activeCategoryTab === 'Digital' && digitalData) {
+      const digitalLines = (digitalData.rows || []).map((r) => ({
+        description: r.description || (r.particular ? `${r.particular} - ${r.media || 'Digital'}` : 'Digital Printing'),
+        descriptionNote: [
+          r.particular && `Part: ${r.particular}`,
+          r.media && `Media: ${r.media}`,
+          r.size && `Size: ${r.size}`,
+          r.side && `Side: ${r.side}`,
+          (Number(r.chargesDesign) > 0 || Number(r.chargesOther) > 0) && `Design: ₹${r.chargesDesign || 0}, Other: ₹${r.chargesOther || 0}`,
+        ].filter(Boolean).join(' | '),
+        hsn: r.hsn || '4911',
+        qty: Number(r.sheetQty) || Number(r.qty) || 1,
+        rate: Number(r.rate) || 0,
+        per: 'SHEET',
+        total: Number(r.total) || Number(r.amount) || 0,
+        gstPercent: Number(r.taxPercent) || 18,
+        gstAmount: Number(r.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(digitalData.finalBill) || Number(digitalData.grandTotal) || 0;
+      const digJobName = digitalLines.map((l) => l.description).join(' / ') || 'Digital Printing';
+      const totalSheetQty = (digitalData.rows || []).reduce((s, r) => s + (Number(r.sheetQty) || Number(r.qty) || 0), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'Digital',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: digitalLines,
+        subTotal: Number(digitalData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: digitalData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(digitalData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (digitalData.receipts?.[0]?.mode || ''),
+        jobName: digJobName,
+        jobQty: String(totalSheetQty || 1),
+        digitalData,
+      };
+    }
+
     const jobName = computedItems
       .map((item) => item.description?.trim())
       .filter(Boolean)
@@ -303,6 +411,7 @@ const AddEstimate = () => {
 
     return {
       quoteNumber: formData.quoteNumber || undefined,
+      category: activeCategoryTab,
       quoteDate: quoteDate.toISOString(),
       orderNo: jobCardNumber || formData.orderNo,
       orderDate: orderDate.toISOString(),
@@ -544,212 +653,267 @@ const AddEstimate = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
-          <div className="bg-blue-900 text-white px-6 py-2 w-fit relative font-semibold text-xs sm:text-sm rounded-br-2xl">
-            Item Details
-          </div>
-          <div className="overflow-x-auto overflow-y-visible -mx-1 px-1">
-            <table className="crm-items-table w-full text-left border-collapse min-w-245">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-56">Description *</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-40">HSN/SAC</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">Qty *</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-28">Rate *</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-20">per</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">GST %</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-32">Amount</th>
-                  <th className="px-6 py-3 w-14" />
-                </tr>
-              </thead>
-              <tbody>
-                {computedItems.map((item) => {
-                  const isListedItem = item.lockedFromMaster;
-                  return (
-                  <tr key={item.id} className="border-t border-gray-100 group">
-                    <td className="px-6 py-4">
-                      <ItemDescriptionInput
-                        value={item.description}
-                        note={item.descriptionNote || ''}
-                        onChange={(value) => handleItemChange(item.id, 'description', value)}
-                        onNoteChange={(value) => handleItemChange(item.id, 'descriptionNote', value)}
-                        onSelectMaster={(masterItem) => applyMasterItemToRow(item.id, masterItem)}
-                        masterItems={masterItems}
-                        required
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <input
-                        type="text"
-                        value={item.hsn || ''}
-                        onChange={(e) => handleItemChange(item.id, 'hsn', e.target.value)}
-                        placeholder="HSN/SAC"
-                        readOnly={isListedItem}
-                        title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
-                        className={listedItemInputClass(
-                          isListedItem,
-                          'w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm',
-                        )}
-                      />
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="number"
-                          value={item.qty}
-                          onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)}
-                          required
-                          className="w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="number"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
-                          required
-                          className="w-24 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="text"
-                          value={item.per ?? ''}
-                          onChange={(e) => handleItemChange(item.id, 'per', e.target.value)}
-                          placeholder="PCS"
-                          readOnly={isListedItem}
-                          title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
-                          className={listedItemInputClass(
-                            isListedItem,
-                            'w-16 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center uppercase',
-                          )}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="number"
-                          value={item.gstPercent}
-                          onChange={(e) => handleItemChange(item.id, 'gstPercent', e.target.value)}
-                          min="0"
-                          step="any"
-                          readOnly={isListedItem}
-                          title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
-                          className={listedItemInputClass(
-                            isListedItem,
-                            'w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center',
-                          )}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="text"
-                          value={Number(item.total || 0).toFixed(2)}
-                          readOnly
-                          className="w-28 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 focus:outline-none text-sm text-center font-semibold text-blue-700"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(item.id)}
-                        className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-all opacity-100"
-                        title="Remove row"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="p-4 flex justify-end bg-gray-50/50">
-            <button
-              type="button"
-              onClick={addRow}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
-            >
-              <Plus size={16} /> Add Row
-            </button>
+        {/* CATEGORY TABS (FLEX / DIGITAL / OFFSET / ETC.) */}
+        <div className="bg-white border border-gray-200 overflow-x-auto rounded-2xl shadow-sm">
+          <div className="flex items-center min-w-max border-b border-gray-200">
+            {[
+              { id: 'FLEX', label: 'FLEX' },
+              { id: 'Digital', label: 'Digital' },
+              { id: 'Offset', label: 'Offset' },
+              { id: 'Other Items', label: 'Other Items' },
+              { id: 'LED / SINAGE', label: 'LED / SINAGE' },
+              { id: 'General Items', label: 'General Items' },
+            ].map((tab) => {
+              const isActive = activeCategoryTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveCategoryTab(tab.id)}
+                  className={`relative px-6 py-3 text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all select-none border-b-2 ${
+                    isActive
+                      ? 'bg-[#29c5d7] text-white border-[#f43f5e] shadow-xs'
+                      : 'bg-white text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="tracking-wide">{tab.label}</span>
+                  <span
+                    className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-black transition-colors ${
+                      isActive ? 'bg-black/30 text-white' : 'bg-gray-400 text-white'
+                    }`}
+                  >
+                    {tab.id === 'FLEX' ? (flexData?.rows?.length || 1) : (tab.id === 'Digital' ? (digitalData?.rows?.length || 0) : 0)}
+                  </span>
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.75 bg-[#f43f5e]" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <PaymentTypeSection
-          value={formData.paymentType}
-          onChange={(value) => setFormData((prev) => ({ ...prev, paymentType: value }))}
-          paymentTypes={paymentTypes}
-          loading={paymentTypesLoading}
-        />
+        {/* ACTIVE CATEGORY CONTENT */}
+        {activeCategoryTab === 'FLEX' ? (
+          <FlexCalculatorSection
+            initialData={editData?.flexData}
+            onTotalsChange={(data) => setFlexData(data)}
+          />
+        ) : activeCategoryTab === 'Digital' ? (
+          <DigitalCalculatorSection
+            initialData={editData?.digitalData}
+            onTotalsChange={(data) => setDigitalData(data)}
+          />
+        ) : (
+          <>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+              <div className="bg-blue-900 text-white px-6 py-2 w-fit relative font-semibold text-xs sm:text-sm rounded-br-2xl">
+                Item Details ({activeCategoryTab})
+              </div>
+              <div className="overflow-x-auto overflow-y-visible -mx-1 px-1">
+                <table className="crm-items-table w-full text-left border-collapse min-w-245">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-56">Description *</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-40">HSN/SAC</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">Qty *</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-28">Rate *</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-20">per</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">GST %</th>
+                      <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-32">Amount</th>
+                      <th className="px-6 py-3 w-14" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {computedItems.map((item) => {
+                      const isListedItem = item.lockedFromMaster;
+                      return (
+                        <tr key={item.id} className="border-t border-gray-100 group">
+                          <td className="px-6 py-4">
+                            <ItemDescriptionInput
+                              value={item.description}
+                              note={item.descriptionNote || ''}
+                              onChange={(value) => handleItemChange(item.id, 'description', value)}
+                              onNoteChange={(value) => handleItemChange(item.id, 'descriptionNote', value)}
+                              onSelectMaster={(masterItem) => applyMasterItemToRow(item.id, masterItem)}
+                              masterItems={masterItems}
+                              required
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <input
+                              type="text"
+                              value={item.hsn || ''}
+                              onChange={(e) => handleItemChange(item.id, 'hsn', e.target.value)}
+                              placeholder="HSN/SAC"
+                              readOnly={isListedItem}
+                              title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
+                              className={listedItemInputClass(
+                                isListedItem,
+                                'w-full bg-white border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm',
+                              )}
+                            />
+                          </td>
+                          <td className="px-2 py-4 text-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                value={item.qty}
+                                onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)}
+                                required
+                                className="w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-4 text-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                value={item.rate}
+                                onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
+                                required
+                                className="w-24 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-4 text-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="text"
+                                value={item.per ?? ''}
+                                onChange={(e) => handleItemChange(item.id, 'per', e.target.value)}
+                                placeholder="PCS"
+                                readOnly={isListedItem}
+                                title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
+                                className={listedItemInputClass(
+                                  isListedItem,
+                                  'w-16 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center uppercase',
+                                )}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-4 text-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                value={item.gstPercent}
+                                onChange={(e) => handleItemChange(item.id, 'gstPercent', e.target.value)}
+                                min="0"
+                                step="any"
+                                readOnly={isListedItem}
+                                title={isListedItem ? LISTED_ITEM_FIELD_HINT : undefined}
+                                className={listedItemInputClass(
+                                  isListedItem,
+                                  'w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center',
+                                )}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-4 text-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="text"
+                                value={Number(item.total || 0).toFixed(2)}
+                                readOnly
+                                className="w-28 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 focus:outline-none text-sm text-center font-semibold text-blue-700"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeRow(item.id)}
+                              className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-all opacity-100"
+                              title="Remove row"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Sub Total *</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-semibold text-gray-800">
-              ₹ {subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div className="p-4 flex justify-end bg-gray-50/50">
+                <button
+                  type="button"
+                  onClick={addRow}
+                  className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
+                >
+                  <Plus size={16} /> Add Row
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Freight</label>
-            <input
-              type="number"
-              name="freight"
-              min="0"
-              step="0.01"
-              value={formData.freight}
-              onChange={handleInputChange}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base sm:text-lg font-semibold text-gray-800"
-              placeholder="0.00"
+
+            <PaymentTypeSection
+              value={formData.paymentType}
+              onChange={(value) => setFormData((prev) => ({ ...prev, paymentType: value }))}
+              paymentTypes={paymentTypes}
+              loading={paymentTypesLoading}
             />
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Amount</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-semibold text-gray-800">
-              ₹ {gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Sub Total *</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-semibold text-gray-800">
+                  ₹ {subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Freight</label>
+                <input
+                  type="number"
+                  name="freight"
+                  min="0"
+                  step="0.01"
+                  value={formData.freight}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base sm:text-lg font-semibold text-gray-800"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Amount</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-semibold text-gray-800">
+                  ₹ {gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Type *</label>
+                <select
+                  name="gstType"
+                  value={formData.gstType}
+                  onChange={handleInputChange}
+                  disabled
+                  className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg px-4 py-2.5 outline-none cursor-not-allowed transition-all text-base sm:text-lg font-semibold pointer-events-none"
+                >
+                  <option value="CGST/SGST">CGST + SGST</option>
+                  <option value="IGST">IGST</option>
+                </select>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Reverse Charge</label>
+                <select
+                  name="reverseCharge"
+                  value={formData.reverseCharge}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base sm:text-lg font-semibold text-gray-800 outline-none cursor-pointer"
+                >
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2 sm:col-span-2 lg:col-span-1">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Grand Total</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-bold text-blue-600">
+                  ₹ {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Type *</label>
-            <select
-              name="gstType"
-              value={formData.gstType}
-              onChange={handleInputChange}
-              disabled
-              className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg px-4 py-2.5 outline-none cursor-not-allowed transition-all text-base sm:text-lg font-semibold pointer-events-none"
-            >
-              <option value="CGST/SGST">CGST + SGST</option>
-              <option value="IGST">IGST</option>
-            </select>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Reverse Charge</label>
-            <select
-              name="reverseCharge"
-              value={formData.reverseCharge}
-              onChange={handleInputChange}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base sm:text-lg font-semibold text-gray-800 outline-none cursor-pointer"
-            >
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2 sm:col-span-2 lg:col-span-1">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Grand Total</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-bold text-blue-600">
-              ₹ {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
           <button
