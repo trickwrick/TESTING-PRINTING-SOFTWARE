@@ -14,6 +14,8 @@ import { API_BASE_URL } from './utils/apiBase';
 import GSTInput from './components/GSTInput';
 import FlexCalculatorSection from './components/FlexCalculatorSection';
 import DigitalCalculatorSection from './components/DigitalCalculatorSection';
+import OffsetCalculatorSection from './components/OffsetCalculatorSection';
+import OtherItemsCalculatorSection from './components/OtherItemsCalculatorSection';
 
 const EMPTY_PARTY_FORM = {
   partyName: '',
@@ -114,6 +116,8 @@ const AddEstimate = () => {
   );
   const [flexData, setFlexData] = useState(editData?.flexData || null);
   const [digitalData, setDigitalData] = useState(editData?.digitalData || null);
+  const [offsetData, setOffsetData] = useState(editData?.offsetData || null);
+  const [otherItemsData, setOtherItemsData] = useState(editData?.otherItemsData || null);
 
   const [items, setItems] = useState(() => normalizeEstimateItems(editData));
   const [masterItems, setMasterItems] = useState([]);
@@ -404,6 +408,104 @@ const AddEstimate = () => {
       };
     }
 
+    // If category is Offset and we have offsetData
+    if (activeCategoryTab === 'Offset' && offsetData) {
+      const offsetLines = (offsetData.rows || []).map((r) => ({
+        description: r.description || r.item || 'Offset Printing Job',
+        descriptionNote: [
+          r.item && `Item: ${r.item}`,
+          (Number(r.designCharges) > 0 || Number(r.otherCharges) > 0) && `Design: ₹${r.designCharges || 0}, Other: ₹${r.otherCharges || 0}`,
+          Number(r.discount) > 0 && `Discount: ₹${r.discount}`,
+        ].filter(Boolean).join(' | '),
+        hsn: '4911',
+        qty: parseFloat(r.qty) || 1,
+        rate: Number(r.amount) || Number(r.total) || 0,
+        per: r.unit || 'PCS',
+        total: Number(r.total) || Number(r.amount) || 0,
+        gstPercent: Number(r.taxPercent) || 18,
+        gstAmount: Number(r.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(offsetData.finalBill) || Number(offsetData.grandTotal) || 0;
+      const offJobName = offsetLines.map((l) => l.description).join(' / ') || 'Offset Printing';
+      const totalOffQty = (offsetData.rows || []).reduce((s, r) => s + (parseFloat(r.qty) || 1), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'Offset',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: offsetLines,
+        subTotal: Number(offsetData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: offsetData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(offsetData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (offsetData.receipts?.[0]?.mode || ''),
+        jobName: offJobName,
+        jobQty: String(totalOffQty || 1),
+        offsetData,
+      };
+    }
+
+    // If category is Other Items and we have otherItemsData
+    if (activeCategoryTab === 'Other Items' && otherItemsData) {
+      const otherLines = (otherItemsData.rows || []).map((r) => ({
+        description: r.description || 'Other Item',
+        descriptionNote: '',
+        hsn: r.hsn || '4911',
+        qty: parseFloat(r.qty) || 1,
+        rate: Number(r.rate) || 0,
+        per: 'PCS',
+        total: Number(r.total) || Number(r.amount) || 0,
+        gstPercent: Number(r.taxPercent) || 18,
+        gstAmount: Number(r.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(otherItemsData.finalBill) || Number(otherItemsData.grandTotal) || 0;
+      const otherJobName = otherLines.map((l) => l.description).join(' / ') || 'Other Items';
+      const totalOtherQty = (otherItemsData.rows || []).reduce((s, r) => s + (parseFloat(r.qty) || 1), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'Other Items',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: otherLines,
+        subTotal: Number(otherItemsData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: otherItemsData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(otherItemsData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (otherItemsData.receipts?.[0]?.mode || ''),
+        jobName: otherJobName,
+        jobQty: String(totalOtherQty || 1),
+        otherItemsData,
+      };
+    }
+
     const jobName = computedItems
       .map((item) => item.description?.trim())
       .filter(Boolean)
@@ -682,7 +784,15 @@ const AddEstimate = () => {
                       isActive ? 'bg-black/30 text-white' : 'bg-gray-400 text-white'
                     }`}
                   >
-                    {tab.id === 'FLEX' ? (flexData?.rows?.length || 1) : (tab.id === 'Digital' ? (digitalData?.rows?.length || 0) : 0)}
+                    {tab.id === 'FLEX'
+                      ? (flexData?.rows?.length || 1)
+                      : tab.id === 'Digital'
+                      ? (digitalData?.rows?.length || 0)
+                      : tab.id === 'Offset'
+                      ? (offsetData?.rows?.length || 0)
+                      : tab.id === 'Other Items'
+                      ? (otherItemsData?.rows?.length || 0)
+                      : 0}
                   </span>
                   {isActive && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.75 bg-[#f43f5e]" />
@@ -703,6 +813,16 @@ const AddEstimate = () => {
           <DigitalCalculatorSection
             initialData={editData?.digitalData}
             onTotalsChange={(data) => setDigitalData(data)}
+          />
+        ) : activeCategoryTab === 'Offset' ? (
+          <OffsetCalculatorSection
+            initialData={editData?.offsetData}
+            onTotalsChange={(data) => setOffsetData(data)}
+          />
+        ) : activeCategoryTab === 'Other Items' ? (
+          <OtherItemsCalculatorSection
+            initialData={editData?.otherItemsData}
+            onTotalsChange={(data) => setOtherItemsData(data)}
           />
         ) : (
           <>

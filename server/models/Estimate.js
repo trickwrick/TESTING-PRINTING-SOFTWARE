@@ -45,6 +45,8 @@ const estimateSchema = new mongoose.Schema({
   category: { type: String, default: 'FLEX' },
   flexData: { type: mongoose.Schema.Types.Mixed, default: null },
   digitalData: { type: mongoose.Schema.Types.Mixed, default: null },
+  offsetData: { type: mongoose.Schema.Types.Mixed, default: null },
+  otherItemsData: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 const Estimate = mongoose.model('Estimate', estimateSchema);
