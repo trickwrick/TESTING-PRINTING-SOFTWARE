@@ -16,6 +16,7 @@ import FlexCalculatorSection from './components/FlexCalculatorSection';
 import DigitalCalculatorSection from './components/DigitalCalculatorSection';
 import OffsetCalculatorSection from './components/OffsetCalculatorSection';
 import OtherItemsCalculatorSection from './components/OtherItemsCalculatorSection';
+import LedSinageCalculatorSection from './components/LedSinageCalculatorSection';
 
 const EMPTY_PARTY_FORM = {
   partyName: '',
@@ -118,6 +119,7 @@ const AddEstimate = () => {
   const [digitalData, setDigitalData] = useState(editData?.digitalData || null);
   const [offsetData, setOffsetData] = useState(editData?.offsetData || null);
   const [otherItemsData, setOtherItemsData] = useState(editData?.otherItemsData || null);
+  const [ledSinageData, setLedSinageData] = useState(editData?.ledSinageData || null);
 
   const [items, setItems] = useState(() => normalizeEstimateItems(editData));
   const [masterItems, setMasterItems] = useState([]);
@@ -506,6 +508,56 @@ const AddEstimate = () => {
       };
     }
 
+    // If category is LED / SINAGE and we have ledSinageData
+    if (activeCategoryTab === 'LED / SINAGE' && ledSinageData) {
+      const ledLines = (ledSinageData.items || []).map((it) => ({
+        description: it.description || it.itemType || 'LED / Signage Board',
+        descriptionNote: [
+          it.itemType && `Type: ${it.itemType}`,
+          Number(it.discount) > 0 && `Discount: ₹${it.discount}`,
+        ].filter(Boolean).join(' | '),
+        hsn: '4911',
+        qty: parseFloat(it.qty) || 1,
+        rate: Number(it.rate) || 0,
+        per: 'PCS',
+        total: Number(it.finalAmount) || Number(it.baseAmount) || 0,
+        gstPercent: Number(it.taxPercent) || 18,
+        gstAmount: Number(it.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(ledSinageData.finalBill) || Number(ledSinageData.grandTotal) || 0;
+      const ledJobName = ledLines.map((l) => l.description).join(' / ') || 'LED Signage';
+      const totalLedQty = (ledSinageData.items || []).reduce((s, it) => s + (parseFloat(it.qty) || 1), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'LED / SINAGE',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: ledLines,
+        subTotal: Number(ledSinageData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: ledSinageData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(ledSinageData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (ledSinageData.receipts?.[0]?.mode || ''),
+        jobName: ledJobName,
+        jobQty: String(totalLedQty || 1),
+        ledSinageData,
+      };
+    }
+
     const jobName = computedItems
       .map((item) => item.description?.trim())
       .filter(Boolean)
@@ -792,6 +844,8 @@ const AddEstimate = () => {
                       ? (offsetData?.rows?.length || 0)
                       : tab.id === 'Other Items'
                       ? (otherItemsData?.rows?.length || 0)
+                      : tab.id === 'LED / SINAGE'
+                      ? (ledSinageData?.items?.length || 0)
                       : 0}
                   </span>
                   {isActive && (
@@ -823,6 +877,11 @@ const AddEstimate = () => {
           <OtherItemsCalculatorSection
             initialData={editData?.otherItemsData}
             onTotalsChange={(data) => setOtherItemsData(data)}
+          />
+        ) : activeCategoryTab === 'LED / SINAGE' ? (
+          <LedSinageCalculatorSection
+            initialData={editData?.ledSinageData}
+            onTotalsChange={(data) => setLedSinageData(data)}
           />
         ) : (
           <>
