@@ -17,6 +17,7 @@ import DigitalCalculatorSection from './components/DigitalCalculatorSection';
 import OffsetCalculatorSection from './components/OffsetCalculatorSection';
 import OtherItemsCalculatorSection from './components/OtherItemsCalculatorSection';
 import LedSinageCalculatorSection from './components/LedSinageCalculatorSection';
+import GeneralItemsCalculatorSection from './components/GeneralItemsCalculatorSection';
 
 const EMPTY_PARTY_FORM = {
   partyName: '',
@@ -120,6 +121,7 @@ const AddEstimate = () => {
   const [offsetData, setOffsetData] = useState(editData?.offsetData || null);
   const [otherItemsData, setOtherItemsData] = useState(editData?.otherItemsData || null);
   const [ledSinageData, setLedSinageData] = useState(editData?.ledSinageData || null);
+  const [generalItemsData, setGeneralItemsData] = useState(editData?.generalItemsData || null);
 
   const [items, setItems] = useState(() => normalizeEstimateItems(editData));
   const [masterItems, setMasterItems] = useState([]);
@@ -558,6 +560,53 @@ const AddEstimate = () => {
       };
     }
 
+    // If category is General Items and we have generalItemsData
+    if (activeCategoryTab === 'General Items' && generalItemsData) {
+      const generalLines = (generalItemsData.rows || []).map((r) => ({
+        description: r.item || 'General Item',
+        descriptionNote: Number(r.discount) > 0 ? `Discount: ₹${r.discount}` : '',
+        hsn: r.hsn || '4911',
+        qty: parseFloat(r.qty) || 1,
+        rate: Number(r.rate) || 0,
+        per: r.unit || 'PCS',
+        total: Number(r.total) || Number(r.amount) || 0,
+        gstPercent: Number(r.taxPercent) || 18,
+        gstAmount: Number(r.taxAmount) || 0,
+      }));
+
+      const finalGrandTotal = Number(generalItemsData.finalBill) || Number(generalItemsData.grandTotal) || 0;
+      const genJobName = generalLines.map((l) => l.description).join(' / ') || 'General Items';
+      const totalGenQty = (generalItemsData.rows || []).reduce((s, r) => s + (parseFloat(r.qty) || 1), 0);
+
+      return {
+        quoteNumber: formData.quoteNumber || undefined,
+        category: 'General Items',
+        quoteDate: quoteDate.toISOString(),
+        orderNo: jobCardNumber || formData.orderNo,
+        orderDate: orderDate.toISOString(),
+        jobCard: jobCardNumber,
+        partyName: formData.party,
+        partyAddress: formData.partyAddress,
+        partyContact: formData.partyContact,
+        partyEmail: formData.partyEmail,
+        partyGst: formData.partyGst,
+        address: formData.partyAddress,
+        gstNo: formData.partyGst,
+        items: generalLines,
+        subTotal: Number(generalItemsData.totalBill) || finalGrandTotal,
+        freight,
+        reverseCharge: formData.reverseCharge || 'No',
+        gstPercent: 18,
+        gstType: generalItemsData.setIgst ? 'IGST' : (formData.gstType || 'CGST/SGST'),
+        gstAmount: Number(generalItemsData.totalTaxAmount) || 0,
+        totalAmount: finalGrandTotal,
+        paymentType: formData.paymentType || (generalItemsData.receipts?.[0]?.mode || ''),
+        jobName: genJobName,
+        jobQty: String(totalGenQty || 1),
+        generalItemsData,
+      };
+    }
+
     const jobName = computedItems
       .map((item) => item.description?.trim())
       .filter(Boolean)
@@ -846,6 +895,8 @@ const AddEstimate = () => {
                       ? (otherItemsData?.rows?.length || 0)
                       : tab.id === 'LED / SINAGE'
                       ? (ledSinageData?.items?.length || 0)
+                      : tab.id === 'General Items'
+                      ? (generalItemsData?.rows?.length || 0)
                       : 0}
                   </span>
                   {isActive && (
@@ -882,6 +933,11 @@ const AddEstimate = () => {
           <LedSinageCalculatorSection
             initialData={editData?.ledSinageData}
             onTotalsChange={(data) => setLedSinageData(data)}
+          />
+        ) : activeCategoryTab === 'General Items' ? (
+          <GeneralItemsCalculatorSection
+            initialData={editData?.generalItemsData}
+            onTotalsChange={(data) => setGeneralItemsData(data)}
           />
         ) : (
           <>

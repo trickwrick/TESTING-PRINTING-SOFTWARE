@@ -48,6 +48,7 @@ const estimateSchema = new mongoose.Schema({
   offsetData: { type: mongoose.Schema.Types.Mixed, default: null },
   otherItemsData: { type: mongoose.Schema.Types.Mixed, default: null },
   ledSinageData: { type: mongoose.Schema.Types.Mixed, default: null },
+  generalItemsData: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 const Estimate = mongoose.model('Estimate', estimateSchema);
