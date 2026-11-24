@@ -209,7 +209,7 @@ export default function QuotationItemsSettings() {
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-sky-600 shrink-0" />
             <span>
-              Yahan add kiya gaya item direct Estimate/Quotation ke <strong>{currentCategoryInfo.fieldHint}</strong> dropdown me dikhega aur auto-calculate hoga.
+              Items added here will appear directly in the Estimate / Quotation <strong>{currentCategoryInfo.fieldHint}</strong> dropdown and will be auto-calculated.
             </span>
           </div>
           <span className="font-bold text-sky-900">Total Items: {filteredItems.length}</span>
