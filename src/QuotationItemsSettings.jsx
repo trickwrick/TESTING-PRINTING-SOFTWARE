@@ -1,13 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Check, X, RefreshCw, Layers, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, RefreshCw, Sparkles, Layers } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
 
+// Category Definitions customized exactly to the respective Estimation section fields
 const CATEGORIES = [
-  { id: 'FLEX', label: 'Flex Media Types', fieldHint: 'Media Type (Frontlit, Star, Vinyl etc.)', defaultUnit: 'Sq.Ft' },
-  { id: 'Digital', label: 'Digital Media', fieldHint: 'Media (130 GSM, 300 GSM, Sticker etc.)', defaultUnit: 'Sheet' },
-  { id: 'Offset', label: 'Offset Items', fieldHint: 'Item / Design (Visiting Card, Flyer etc.)', defaultUnit: 'PCS' },
-  { id: 'LED / SINAGE', label: 'LED / Signage', fieldHint: 'Item Type (Channel Letter, Acrylic LED etc.)', defaultUnit: 'PCS' },
-  { id: 'General Items', label: 'General Items', fieldHint: 'Item Name (Graphic Design, Stamp etc.)', defaultUnit: 'PCS' },
+  {
+    id: 'FLEX',
+    label: 'Flex',
+    titleLabel: 'Media Type',
+    titlePlaceholder: 'e.g. Frontlit Flex, Star Flex, Vinyl, Backlit',
+    rateLabel: 'Rate Sq.Ft (₹)',
+    unitLabel: 'Unit',
+    defaultUnit: 'Sq.Ft',
+    descLabel: 'Specifications / Micron',
+    hasHsn: true,
+    hasTax: true,
+  },
+  {
+    id: 'Digital',
+    label: 'Digital',
+    titleLabel: 'Media',
+    titlePlaceholder: 'e.g. 130 GSM Art Paper, 300 GSM Art Card, Sticker',
+    rateLabel: 'Sheet Rate (₹)',
+    unitLabel: 'Unit',
+    defaultUnit: 'Sheet',
+    descLabel: 'Paper Quality / Finish',
+    hasHsn: true,
+    hasTax: true,
+  },
+  {
+    id: 'Offset',
+    label: 'Offset',
+    titleLabel: 'Item / Design',
+    titlePlaceholder: 'e.g. Visiting Card, Letterhead, Pamphlet, Bill Book',
+    rateLabel: 'Default Rate (₹)',
+    unitLabel: 'Unit (PCS, BOX, BOOK, REAM)',
+    defaultUnit: 'PCS',
+    descLabel: 'Printing / Binding Specs',
+    hasHsn: false,
+    hasTax: true,
+  },
+  {
+    id: 'LED / SINAGE',
+    label: 'LED / SINAGE',
+    titleLabel: 'Item Type',
+    titlePlaceholder: 'e.g. Channel Letter, Acrylic LED Signage, Neon Sign, LED Board',
+    rateLabel: 'Default Rate (₹)',
+    unitLabel: 'Unit',
+    defaultUnit: 'PCS',
+    descLabel: 'Default Description / Specs',
+    hasHsn: false,
+    hasTax: true,
+  },
+  {
+    id: 'General Items',
+    label: 'General Items',
+    titleLabel: 'Item Name',
+    titlePlaceholder: 'e.g. Graphic Design Work, Photo Framing, Rubber Stamp',
+    rateLabel: 'Default Rate (₹)',
+    unitLabel: 'Unit',
+    defaultUnit: 'PCS',
+    descLabel: 'Item Specs / Details',
+    hasHsn: true,
+    hasTax: true,
+  },
 ];
 
 export default function QuotationItemsSettings() {
@@ -46,7 +102,7 @@ export default function QuotationItemsSettings() {
     loadItems();
   }, []);
 
-  const currentCategoryInfo = CATEGORIES.find((c) => c.id === activeCategory) || CATEGORIES[0];
+  const currentCat = CATEGORIES.find((c) => c.id === activeCategory) || CATEGORIES[0];
   const filteredItems = items.filter((item) => item.category === activeCategory);
 
   const handleStartAdd = () => {
@@ -54,7 +110,7 @@ export default function QuotationItemsSettings() {
     setFormData({
       name: '',
       defaultRate: '',
-      unit: currentCategoryInfo.defaultUnit,
+      unit: currentCat.defaultUnit,
       hsn: '4911',
       defaultTaxPercent: 18,
       description: '',
@@ -68,7 +124,7 @@ export default function QuotationItemsSettings() {
     setFormData({
       name: item.name,
       defaultRate: item.defaultRate || '',
-      unit: item.unit || currentCategoryInfo.defaultUnit,
+      unit: item.unit || currentCat.defaultUnit,
       hsn: item.hsn || '4911',
       defaultTaxPercent: item.defaultTaxPercent ?? 18,
       description: item.description || '',
@@ -82,7 +138,7 @@ export default function QuotationItemsSettings() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return alert('Name is required');
+    if (!formData.name.trim()) return alert(`${currentCat.titleLabel} is required`);
 
     try {
       if (editingId) {
@@ -151,14 +207,14 @@ export default function QuotationItemsSettings() {
             Quotation Item Settings
           </h1>
           <p className="text-gray-500 text-xs sm:text-sm mt-1">
-            Manage dropdown items and default rates for Flex, Digital, Offset, LED/Signage & General Items.
+            Configure section-specific items: Flex Media, Digital Media, Offset Items, LED/Signage Item Types & General Items.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={loadItems}
             className="p-2.5 text-gray-500 hover:text-[#29c5d7] hover:bg-gray-50 rounded-xl transition-all border border-gray-200"
-            title="Refresh list"
+            title="Refresh"
           >
             <RefreshCw size={18} />
           </button>
@@ -166,12 +222,12 @@ export default function QuotationItemsSettings() {
             onClick={handleStartAdd}
             className="inline-flex items-center gap-2 bg-[#29c5d7] hover:bg-[#20b2c3] text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95"
           >
-            <Plus size={16} /> Add New Item
+            <Plus size={16} /> Add {currentCat.titleLabel}
           </button>
         </div>
       </div>
 
-      {/* Category Tabs */}
+      {/* Category Tabs (Matches Estimation Tab Styling) */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
         <div className="flex items-center border-b border-gray-200 overflow-x-auto">
           {CATEGORIES.map((cat) => {
@@ -204,23 +260,23 @@ export default function QuotationItemsSettings() {
           })}
         </div>
 
-        {/* Info Banner */}
+        {/* Section Context Info Banner */}
         <div className="p-4 bg-sky-50/60 border-b border-sky-100 flex items-center justify-between text-xs text-sky-800">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-sky-600 shrink-0" />
             <span>
-              Items added here will appear directly in the Estimate / Quotation <strong>{currentCategoryInfo.fieldHint}</strong> dropdown and will be auto-calculated.
+              Configuring <strong>{currentCat.label}</strong> section: Items added here will appear in the <strong>{currentCat.titleLabel}</strong> dropdown in Quotation / Estimate.
             </span>
           </div>
-          <span className="font-bold text-sky-900">Total Items: {filteredItems.length}</span>
+          <span className="font-bold text-sky-900">Total {currentCat.titleLabel}: {filteredItems.length}</span>
         </div>
 
-        {/* Add / Edit Form Modal or Inline */}
+        {/* Section Specific Add / Edit Form */}
         {(isAdding || editingId) && (
           <form onSubmit={handleSave} className="p-5 bg-gray-50/80 border-b border-gray-200 space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <h3 className="font-black text-gray-800 text-sm">
-                {editingId ? 'Edit Quotation Item' : `Add New Item to [${currentCategoryInfo.label}]`}
+                {editingId ? `Edit ${currentCat.titleLabel}` : `Add New [${currentCat.titleLabel}] for ${currentCat.label}`}
               </h3>
               <button type="button" onClick={handleCancelForm} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
@@ -228,20 +284,24 @@ export default function QuotationItemsSettings() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Item Title / Name Field */}
               <div className="space-y-1 sm:col-span-2">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">Item Name / Media Title *</label>
+                <label className="text-[11px] font-bold text-gray-700 uppercase">
+                  {currentCat.titleLabel} *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Star Frontlit / Visiting Card / Acrylic LED"
+                  placeholder={currentCat.titlePlaceholder}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold focus:border-[#29c5d7] outline-none"
                 />
               </div>
 
+              {/* Rate Field */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">Default Rate (₹)</label>
+                <label className="text-[11px] font-bold text-gray-700 uppercase">{currentCat.rateLabel}</label>
                 <input
                   type="number"
                   step="any"
@@ -252,47 +312,57 @@ export default function QuotationItemsSettings() {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">Unit</label>
-                <input
-                  type="text"
-                  placeholder="Sq.Ft / Sheet / PCS / BOX"
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
-                />
-              </div>
+              {/* Unit Field (Hidden for LED / Fixed for Flex if preferred) */}
+              {activeCategory !== 'LED / SINAGE' && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-700 uppercase">{currentCat.unitLabel}</label>
+                  <input
+                    type="text"
+                    placeholder={currentCat.defaultUnit}
+                    value={formData.unit}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
+                  />
+                </div>
+              )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">HSN/SAC Code</label>
-                <input
-                  type="text"
-                  value={formData.hsn}
-                  onChange={(e) => setFormData({ ...formData, hsn: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
-                />
-              </div>
+              {/* HSN Field */}
+              {currentCat.hasHsn && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-700 uppercase">HSN/SAC Code</label>
+                  <input
+                    type="text"
+                    value={formData.hsn}
+                    onChange={(e) => setFormData({ ...formData, hsn: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
+                  />
+                </div>
+              )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">Default GST %</label>
-                <select
-                  value={formData.defaultTaxPercent}
-                  onChange={(e) => setFormData({ ...formData, defaultTaxPercent: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
-                >
-                  <option value={0}>0%</option>
-                  <option value={5}>5%</option>
-                  <option value={12}>12%</option>
-                  <option value={18}>18%</option>
-                  <option value={28}>28%</option>
-                </select>
-              </div>
+              {/* Tax Field */}
+              {currentCat.hasTax && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-700 uppercase">Tax %</label>
+                  <select
+                    value={formData.defaultTaxPercent}
+                    onChange={(e) => setFormData({ ...formData, defaultTaxPercent: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
+                  >
+                    <option value={0}>0%</option>
+                    <option value={5}>5%</option>
+                    <option value={12}>12%</option>
+                    <option value={18}>18%</option>
+                    <option value={28}>28%</option>
+                  </select>
+                </div>
+              )}
 
+              {/* Description / Extra Details Field */}
               <div className="space-y-1 sm:col-span-2">
-                <label className="text-[11px] font-bold text-gray-700 uppercase">Notes / Specs (Optional)</label>
+                <label className="text-[11px] font-bold text-gray-700 uppercase">{currentCat.descLabel}</label>
                 <input
                   type="text"
-                  placeholder="GSM, thickness, warranty or extra details..."
+                  placeholder="Optional details..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:border-[#29c5d7] outline-none"
@@ -312,23 +382,23 @@ export default function QuotationItemsSettings() {
                 type="submit"
                 className="px-5 py-2 text-xs font-bold text-white bg-[#29c5d7] hover:bg-[#20b2c3] rounded-lg shadow-sm transition active:scale-95"
               >
-                {editingId ? 'Update Item' : 'Save Item'}
+                {editingId ? 'Update' : 'Save'}
               </button>
             </div>
           </form>
         )}
 
-        {/* Table of Items */}
+        {/* Section Specific Items Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left text-gray-700">
             <thead className="bg-gray-100/70 text-gray-800 uppercase font-black text-[11px] border-b border-gray-200">
               <tr>
                 <th className="p-3.5 w-12 text-center">#</th>
-                <th className="p-3.5">Item Name / Title</th>
-                <th className="p-3.5 text-center w-28">Default Rate</th>
-                <th className="p-3.5 text-center w-24">Unit</th>
-                <th className="p-3.5 text-center w-24">HSN</th>
-                <th className="p-3.5 text-center w-20">GST</th>
+                <th className="p-3.5">{currentCat.titleLabel}</th>
+                <th className="p-3.5 text-center w-32">{currentCat.rateLabel}</th>
+                {activeCategory !== 'LED / SINAGE' && <th className="p-3.5 text-center w-24">Unit</th>}
+                {currentCat.hasHsn && <th className="p-3.5 text-center w-24">HSN</th>}
+                <th className="p-3.5 text-center w-20">Tax</th>
                 <th className="p-3.5 text-center w-28">Actions</th>
               </tr>
             </thead>
@@ -342,7 +412,7 @@ export default function QuotationItemsSettings() {
               ) : filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-gray-400 italic">
-                    No items in this category yet. Click &quot;Add New Item&quot; to create one.
+                    No {currentCat.titleLabel} configured yet. Click &quot;Add {currentCat.titleLabel}&quot; above.
                   </td>
                 </tr>
               ) : (
@@ -356,10 +426,12 @@ export default function QuotationItemsSettings() {
                     <td className="p-3 text-center font-black text-blue-700 text-xs">
                       ₹ {Number(item.defaultRate || 0).toFixed(2)}
                     </td>
-                    <td className="p-3 text-center font-semibold text-gray-600 uppercase text-[11px]">
-                      {item.unit || '-'}
-                    </td>
-                    <td className="p-3 text-center text-gray-500">{item.hsn || '-'}</td>
+                    {activeCategory !== 'LED / SINAGE' && (
+                      <td className="p-3 text-center font-semibold text-gray-600 uppercase text-[11px]">
+                        {item.unit || currentCat.defaultUnit}
+                      </td>
+                    )}
+                    {currentCat.hasHsn && <td className="p-3 text-center text-gray-500">{item.hsn || '-'}</td>}
                     <td className="p-3 text-center font-bold text-gray-700">{item.defaultTaxPercent ?? 18}%</td>
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
