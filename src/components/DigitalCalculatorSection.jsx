@@ -80,6 +80,7 @@ const calcDigitalRow = (row) => {
 };
 
 export default function DigitalCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [quotationItemsList, setQuotationItemsList] = useState([]);
   const [mediaOptions, setMediaOptions] = useState(DIGITAL_MEDIA_OPTIONS);
 
   useEffect(() => {
@@ -87,6 +88,7 @@ export default function DigitalCalculatorSection({ onTotalsChange, initialData =
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
+          setQuotationItemsList(data);
           const names = ['Select Media', ...data.map((d) => d.name)];
           setMediaOptions(names);
         }
@@ -122,7 +124,19 @@ export default function DigitalCalculatorSection({ onTotalsChange, initialData =
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        const updated = { ...r, [field]: value };
+        let updated = { ...r, [field]: value };
+
+        // Auto-fill when media changes
+        if (field === 'media' && value) {
+          const matched = quotationItemsList.find((q) => q.name.toLowerCase() === value.toLowerCase());
+          if (matched) {
+            if (matched.defaultRate) updated.rate = matched.defaultRate;
+            if (matched.hsn) updated.hsn = matched.hsn;
+            if (matched.defaultTaxPercent !== undefined) updated.taxPercent = matched.defaultTaxPercent;
+            if (matched.description && !updated.particular) updated.particular = matched.description;
+          }
+        }
+
         return calcDigitalRow(updated);
       })
     );

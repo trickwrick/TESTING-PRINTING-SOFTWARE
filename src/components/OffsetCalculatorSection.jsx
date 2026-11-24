@@ -66,6 +66,7 @@ const calcOffsetRow = (row) => {
 };
 
 export default function OffsetCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [quotationItemsList, setQuotationItemsList] = useState([]);
   const [itemOptions, setItemOptions] = useState(OFFSET_ITEMS);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function OffsetCalculatorSection({ onTotalsChange, initialData = 
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
+          setQuotationItemsList(data);
           const names = ['Select Item', ...data.map((d) => d.name)];
           setItemOptions(names);
         }
@@ -107,7 +109,22 @@ export default function OffsetCalculatorSection({ onTotalsChange, initialData = 
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        const updated = { ...r, [field]: value };
+        let updated = { ...r, [field]: value };
+
+        // Auto-fill when item changes
+        if (field === 'item' && value) {
+          const matched = quotationItemsList.find((q) => q.name.toLowerCase() === value.toLowerCase());
+          if (matched) {
+            if (matched.defaultRate) {
+              updated.basePrice = matched.defaultRate;
+              updated.amount = matched.defaultRate;
+            }
+            if (matched.unit) updated.unit = matched.unit;
+            if (matched.defaultTaxPercent !== undefined) updated.taxPercent = matched.defaultTaxPercent;
+            if (matched.description && !updated.description) updated.description = matched.description;
+          }
+        }
+
         return calcOffsetRow(updated);
       })
     );

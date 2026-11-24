@@ -61,6 +61,7 @@ const calcLedItem = (item) => {
 };
 
 export default function LedSinageCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [quotationItemsList, setQuotationItemsList] = useState([]);
   const [itemTypeOptions, setItemTypeOptions] = useState(LED_ITEM_TYPES);
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function LedSinageCalculatorSection({ onTotalsChange, initialData
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
+          setQuotationItemsList(data);
           const names = ['Select Item Type', ...data.map((d) => d.name)];
           setItemTypeOptions(names);
         }
@@ -106,7 +108,18 @@ export default function LedSinageCalculatorSection({ onTotalsChange, initialData
     setItems((prev) =>
       prev.map((it, idx) => {
         if (idx !== activeItemIndex) return it;
-        const updated = { ...it, [field]: value };
+        let updated = { ...it, [field]: value };
+
+        // When itemType changes, auto-fill description, rate, and taxPercent from quotation-items if available
+        if (field === 'itemType' && value) {
+          const matched = quotationItemsList.find((q) => q.name.toLowerCase() === value.toLowerCase());
+          if (matched) {
+            if (matched.defaultRate) updated.rate = matched.defaultRate;
+            if (matched.defaultTaxPercent !== undefined) updated.taxPercent = matched.defaultTaxPercent;
+            if (matched.description && !updated.description) updated.description = matched.description;
+          }
+        }
+
         return calcLedItem(updated);
       })
     );

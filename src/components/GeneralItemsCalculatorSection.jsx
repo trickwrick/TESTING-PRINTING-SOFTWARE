@@ -61,6 +61,7 @@ const calcGeneralRow = (row) => {
 };
 
 export default function GeneralItemsCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [quotationItemsList, setQuotationItemsList] = useState([]);
   const [generalItemOptions, setGeneralItemOptions] = useState(GENERAL_ITEMS);
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function GeneralItemsCalculatorSection({ onTotalsChange, initialD
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
+          setQuotationItemsList(data);
           const names = ['Select Item', ...data.map((d) => d.name)];
           setGeneralItemOptions(names);
         }
@@ -99,7 +101,19 @@ export default function GeneralItemsCalculatorSection({ onTotalsChange, initialD
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        const updated = { ...r, [field]: value };
+        let updated = { ...r, [field]: value };
+
+        // Auto-fill when item changes
+        if (field === 'item' && value) {
+          const matched = quotationItemsList.find((q) => q.name.toLowerCase() === value.toLowerCase());
+          if (matched) {
+            if (matched.defaultRate) updated.rate = matched.defaultRate;
+            if (matched.hsn) updated.hsn = matched.hsn;
+            if (matched.unit) updated.unit = matched.unit;
+            if (matched.defaultTaxPercent !== undefined) updated.taxPercent = matched.defaultTaxPercent;
+          }
+        }
+
         return calcGeneralRow(updated);
       })
     );

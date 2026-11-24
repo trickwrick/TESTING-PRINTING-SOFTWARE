@@ -89,6 +89,7 @@ const calcFlexRow = (row) => {
 };
 
 export default function FlexCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [quotationItemsList, setQuotationItemsList] = useState([]);
   const [mediaOptions, setMediaOptions] = useState(MEDIA_TYPES);
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export default function FlexCalculatorSection({ onTotalsChange, initialData = {}
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
+          setQuotationItemsList(data);
           const names = ['Select Media', ...data.map((d) => d.name)];
           setMediaOptions(names);
         }
@@ -131,7 +133,19 @@ export default function FlexCalculatorSection({ onTotalsChange, initialData = {}
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        const updated = { ...r, [field]: value };
+        let updated = { ...r, [field]: value };
+
+        // Auto-fill when mediaType changes
+        if (field === 'mediaType' && value) {
+          const matched = quotationItemsList.find((q) => q.name.toLowerCase() === value.toLowerCase());
+          if (matched) {
+            if (matched.defaultRate) updated.rateSqFt = matched.defaultRate;
+            if (matched.hsn) updated.hsn = matched.hsn;
+            if (matched.defaultTaxPercent !== undefined) updated.taxPercent = matched.defaultTaxPercent;
+            if (matched.description && !updated.description) updated.description = matched.description;
+          }
+        }
+
         return calcFlexRow(updated);
       })
     );
