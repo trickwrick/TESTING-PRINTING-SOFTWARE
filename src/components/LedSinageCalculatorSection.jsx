@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Trash2 } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const LED_ITEM_TYPES = [
   'Select Item Type',
@@ -60,6 +61,20 @@ const calcLedItem = (item) => {
 };
 
 export default function LedSinageCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [itemTypeOptions, setItemTypeOptions] = useState(LED_ITEM_TYPES);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/quotation-items?category=LED%20%2F%20SINAGE`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['Select Item Type', ...data.map((d) => d.name)];
+          setItemTypeOptions(names);
+        }
+      })
+      .catch((err) => console.error('Error fetching led signage items:', err));
+  }, []);
+
   const [items, setItems] = useState(() => {
     if (initialData?.ledItems?.length) {
       return initialData.ledItems.map((item, idx) => calcLedItem({ ...item, tabTitle: item.tabTitle || `Item ${idx + 1}` }));
@@ -247,7 +262,7 @@ export default function LedSinageCalculatorSection({ onTotalsChange, initialData
                   onChange={(e) => handleCurrentItemChange('itemType', e.target.value)}
                   className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-medium focus:border-[#29c5d7] focus:ring-1 focus:ring-[#29c5d7] outline-none shadow-2xs"
                 >
-                  {LED_ITEM_TYPES.map((t) => (
+                  {itemTypeOptions.map((t) => (
                     <option key={t} value={t === 'Select Item Type' ? '' : t}>
                       {t}
                     </option>

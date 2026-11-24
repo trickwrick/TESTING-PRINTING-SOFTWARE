@@ -35,6 +35,7 @@ import itemRoutes from "./routes/itemRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
 import recentDeletedRoutes from "./routes/recentDeletedRoutes.js";
+import quotationItemRoutes from "./routes/quotationItemRoutes.js";
 import { seedStaffAndRoles } from "./utils/seedStaff.js";
 import { syncStockFromLedger } from "./utils/paperStockDeduction.js";
 
@@ -144,6 +145,7 @@ app.use("/api/items", itemRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/recent-deleted", recentDeletedRoutes);
+app.use("/api/quotation-items", quotationItemRoutes);
 
 // API Test Route (Internal)
 app.get("/api/health", (req, res) => {

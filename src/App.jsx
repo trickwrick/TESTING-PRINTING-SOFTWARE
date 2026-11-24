@@ -41,6 +41,7 @@ import ItemListManagement from './ItemListManagement';
 import ContactSupport from './ContactSupport';
 import StaffTeamManagement from './StaffTeamManagement';
 import RecentDeleted from './RecentDeleted';
+import QuotationItemsSettings from './QuotationItemsSettings';
 import { API_BASE_URL } from './utils/apiBase';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
 import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
@@ -549,6 +550,7 @@ export default function App() {
       });
 
   const profileSettingsItems = [
+    { label: 'Quotation Items', path: '/settings/quotation-items' },
     { label: 'Change Password', path: '/settings/password' },
     ...(hasPermission('itemList', 'view') ? [{ label: 'Listed Items', path: '/item-list' }] : []),
     { label: 'Recently Deleted', path: '/recent-deleted' },
@@ -936,6 +938,7 @@ export default function App() {
           <Route path="/challan/list" element={<ChallanList />} />
           <Route path="/contact-support" element={<ContactSupport />} />
           <Route path="/settings/password" element={<SettingsPage />} />
+          <Route path="/settings/quotation-items" element={<QuotationItemsSettings />} />
           {STAFF_TEAM_ENABLED && (
             <>
           <Route path="/staff-team" element={<Navigate to="/staff-team/manage" replace />} />

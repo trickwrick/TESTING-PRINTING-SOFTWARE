@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Trash2, Calendar } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const MEDIA_TYPES = [
   'Select Media',
@@ -88,6 +89,20 @@ const calcFlexRow = (row) => {
 };
 
 export default function FlexCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [mediaOptions, setMediaOptions] = useState(MEDIA_TYPES);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/quotation-items?category=FLEX`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['Select Media', ...data.map((d) => d.name)];
+          setMediaOptions(names);
+        }
+      })
+      .catch((err) => console.error('Error fetching flex media items:', err));
+  }, []);
+
   const [rows, setRows] = useState(() => {
     if (initialData?.flexRows?.length) {
       return initialData.flexRows.map((r) => calcFlexRow(r));
@@ -274,7 +289,7 @@ export default function FlexCalculatorSection({ onTotalsChange, initialData = {}
                     onChange={(e) => handleRowChange(row.id, 'mediaType', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-md px-1.5 py-1.5 text-xs focus:border-[#29c5d7] outline-none"
                   >
-                    {MEDIA_TYPES.map((m) => (
+                    {mediaOptions.map((m) => (
                       <option key={m} value={m === 'Select Media' ? '' : m}>
                         {m}
                       </option>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const DIGITAL_MEDIA_OPTIONS = [
   'Select Media',
@@ -79,6 +80,20 @@ const calcDigitalRow = (row) => {
 };
 
 export default function DigitalCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [mediaOptions, setMediaOptions] = useState(DIGITAL_MEDIA_OPTIONS);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/quotation-items?category=Digital`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['Select Media', ...data.map((d) => d.name)];
+          setMediaOptions(names);
+        }
+      })
+      .catch((err) => console.error('Error fetching digital media items:', err));
+  }, []);
+
   const [rows, setRows] = useState(() => {
     if (initialData?.digitalRows?.length) {
       return initialData.digitalRows.map((r) => calcDigitalRow(r));
@@ -277,7 +292,7 @@ export default function DigitalCalculatorSection({ onTotalsChange, initialData =
                     onChange={(e) => handleRowChange(row.id, 'media', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-md px-1.5 py-1.5 text-xs focus:border-[#29c5d7] outline-none"
                   >
-                    {DIGITAL_MEDIA_OPTIONS.map((m) => (
+                    {mediaOptions.map((m) => (
                       <option key={m} value={m === 'Select Media' ? '' : m}>
                         {m}
                       </option>

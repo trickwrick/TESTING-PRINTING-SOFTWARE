@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const OFFSET_ITEMS = [
   'Select Item',
@@ -65,6 +66,20 @@ const calcOffsetRow = (row) => {
 };
 
 export default function OffsetCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [itemOptions, setItemOptions] = useState(OFFSET_ITEMS);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/quotation-items?category=Offset`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['Select Item', ...data.map((d) => d.name)];
+          setItemOptions(names);
+        }
+      })
+      .catch((err) => console.error('Error fetching offset items:', err));
+  }, []);
+
   const [rows, setRows] = useState(() => {
     if (initialData?.offsetRows?.length) {
       return initialData.offsetRows.map((r) => calcOffsetRow(r));
@@ -246,7 +261,7 @@ export default function OffsetCalculatorSection({ onTotalsChange, initialData = 
                     onChange={(e) => handleRowChange(row.id, 'item', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:border-[#29c5d7] outline-none"
                   >
-                    {OFFSET_ITEMS.map((item) => (
+                    {itemOptions.map((item) => (
                       <option key={item} value={item === 'Select Item' ? '' : item}>
                         {item}
                       </option>

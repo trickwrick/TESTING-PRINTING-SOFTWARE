@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const GENERAL_ITEMS = [
   'Select Item',
@@ -60,6 +61,20 @@ const calcGeneralRow = (row) => {
 };
 
 export default function GeneralItemsCalculatorSection({ onTotalsChange, initialData = {} }) {
+  const [generalItemOptions, setGeneralItemOptions] = useState(GENERAL_ITEMS);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/quotation-items?category=General%20Items`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['Select Item', ...data.map((d) => d.name)];
+          setGeneralItemOptions(names);
+        }
+      })
+      .catch((err) => console.error('Error fetching general items:', err));
+  }, []);
+
   const [rows, setRows] = useState(() => {
     if (initialData?.generalRows?.length) {
       return initialData.generalRows.map((r) => calcGeneralRow(r));
@@ -218,7 +233,7 @@ export default function GeneralItemsCalculatorSection({ onTotalsChange, initialD
                     onChange={(e) => handleRowChange(row.id, 'item', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:border-[#29c5d7] outline-none"
                   >
-                    {GENERAL_ITEMS.map((item) => (
+                    {generalItemOptions.map((item) => (
                       <option key={item} value={item === 'Select Item' ? '' : item}>
                         {item}
                       </option>
