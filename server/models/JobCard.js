@@ -89,6 +89,24 @@ const jobCardSchema = new mongoose.Schema({
   workflowStep: { type: Number, default: 0 },
   workflowStatus: { type: String, default: 'pending', enum: ['pending', 'in-progress', 'completed'] },
   workflowCompletedBy: { type: mongoose.Schema.Types.Mixed, default: {} },
+  paperUsage: {
+    totalUnits: { type: Number, default: 0 },
+    usedUnits: { type: Number, default: 0 },
+    remainingUnits: { type: Number, default: 0 },
+    isCompleted: { type: Boolean, default: false },
+    history: [{
+      usedQty: { type: Number, default: 0 },
+      date: { type: Date, default: Date.now },
+      operator: { type: String, default: '' },
+      note: { type: String, default: '' }
+    }]
+  },
+  challanProof: {
+    imageUrl: { type: String, default: '' },
+    uploadedAt: { type: Date },
+    uploadedBy: { type: String, default: '' },
+    notes: { type: String, default: '' }
+  },
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

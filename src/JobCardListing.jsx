@@ -5,6 +5,8 @@ import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import WorkflowProgressLine, { DEFAULT_WORKFLOW_STEPS } from './components/WorkflowProgressLine';
+import PaperUsageModal from './components/PaperUsageModal';
+import ChallanProofModal from './components/ChallanProofModal';
 import { syncPlateUsageFromCards, formatPlateSizes, formatPlateUseCounts } from './utils/plateUsage';
 import {
   formatCoverPaperName,
@@ -224,6 +226,50 @@ export default function JobCardListing() {
   // Inline expanded progress line per card { [cardId]: true / false }
   const [expandedWorkflowCardIds, setExpandedWorkflowCardIds] = useState({});
   const [isUpdatingWorkflow, setIsUpdatingWorkflow] = useState(false);
+
+  // Modals for Paper Usage & Challan Proof
+  const [paperModalCard, setPaperModalCard] = useState(null);
+  const [challanModalCard, setChallanModalCard] = useState(null);
+
+  const handleSavePaperUsage = async (updatedUsage) => {
+    if (!paperModalCard) return;
+    const updatedCard = {
+      ...paperModalCard,
+      paperUsage: updatedUsage,
+    };
+    setJobCards((prev) => prev.map((c) => (c._id === paperModalCard._id ? updatedCard : c)));
+    setPaperModalCard(updatedCard);
+
+    try {
+      await fetch(`${API_BASE_URL}/api/jobcard/${paperModalCard._id}/paper-usage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperUsage: updatedUsage }),
+      });
+    } catch (err) {
+      console.error('Error saving paper usage:', err);
+    }
+  };
+
+  const handleSaveChallanProof = async (proofData) => {
+    if (!challanModalCard) return;
+    const updatedCard = {
+      ...challanModalCard,
+      challanProof: proofData,
+    };
+    setJobCards((prev) => prev.map((c) => (c._id === challanModalCard._id ? updatedCard : c)));
+    setChallanModalCard(updatedCard);
+
+    try {
+      await fetch(`${API_BASE_URL}/api/jobcard/${challanModalCard._id}/challan-proof`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challanProof: proofData }),
+      });
+    } catch (err) {
+      console.error('Error saving challan proof:', err);
+    }
+  };
 
   const toggleWorkflowExpand = (cardId) => {
     setExpandedWorkflowCardIds((prev) => ({
@@ -483,13 +529,17 @@ export default function JobCardListing() {
                   </div>
 
                   {expandedWorkflowCardIds[card._id] && (
-                    <div className="mt-3 pt-2 border-t border-gray-100 overflow-x-auto">
+                    <div className="mt-3 pt-2 border-t border-gray-100 overflow-x-auto animate-in fade-in duration-200">
                       <WorkflowProgressLine
                         currentStep={card.workflowStep || 0}
                         onStepChange={(newStep, stepData) => handleCardWorkflowStepChange(card, newStep, stepData)}
                         completedByMap={card.workflowCompletedBy || {}}
                         canEdit={true}
                         timeLeftDays={5}
+                        isPaperCompleted={!!card.paperUsage?.isCompleted}
+                        hasChallanProof={!!card.challanProof?.imageUrl}
+                        onPaperNodeClick={() => setPaperModalCard(card)}
+                        onChallanProofClick={() => setChallanModalCard(card)}
                       />
                     </div>
                   )}
@@ -662,15 +712,19 @@ export default function JobCardListing() {
                     </td>
                   </tr>
                   {isExpanded && (
-                    <tr className="bg-white border-b border-gray-200">
+                    <tr className="bg-white border-b border-gray-200 animate-in fade-in slide-in-from-top-1 duration-200">
                       <td colSpan={totalCols} className="p-0">
-                        <div className="border-t border-b border-gray-100 bg-[#fdfdfd] shadow-2xs">
+                        <div className="border-t border-b border-gray-100 bg-[#fdfdfd] shadow-2xs transition-all duration-300">
                           <WorkflowProgressLine
                             currentStep={card.workflowStep || 0}
                             onStepChange={(newStep, stepData) => handleCardWorkflowStepChange(card, newStep, stepData)}
                             completedByMap={card.workflowCompletedBy || {}}
                             canEdit={true}
                             timeLeftDays={5}
+                            isPaperCompleted={!!card.paperUsage?.isCompleted}
+                            hasChallanProof={!!card.challanProof?.imageUrl}
+                            onPaperNodeClick={() => setPaperModalCard(card)}
+                            onChallanProofClick={() => setChallanModalCard(card)}
                           />
                         </div>
                       </td>
@@ -896,6 +950,22 @@ export default function JobCardListing() {
           </div>
         </div>
       )}
+      {/* Paper Usage Status Modal */}
+      <PaperUsageModal
+        isOpen={!!paperModalCard}
+        onClose={() => setPaperModalCard(null)}
+        jobCard={paperModalCard}
+        onSavePaperUsage={handleSavePaperUsage}
+      />
+
+      {/* Challan Proof Modal */}
+      <ChallanProofModal
+        isOpen={!!challanModalCard}
+        onClose={() => setChallanModalCard(null)}
+        jobCard={challanModalCard}
+        onSaveChallanProof={handleSaveChallanProof}
+      />
+
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}

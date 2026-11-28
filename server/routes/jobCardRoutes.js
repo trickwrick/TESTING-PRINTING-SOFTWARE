@@ -285,15 +285,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/jobcard/:id/workflow - Update workflow step and status
+// PATCH /api/jobcard/:id/workflow - Update workflow step, paper usage, challan proof, status
 router.patch('/:id/workflow', async (req, res) => {
   try {
-    const { workflowStep, workflowStatus, workflowCompletedBy } = req.body;
+    const { workflowStep, workflowStatus, workflowCompletedBy, paperUsage, challanProof } = req.body;
     const updateFields = { updatedAt: new Date() };
 
     if (workflowStep !== undefined) updateFields.workflowStep = Number(workflowStep);
     if (workflowStatus !== undefined) updateFields.workflowStatus = workflowStatus;
     if (workflowCompletedBy !== undefined) updateFields.workflowCompletedBy = workflowCompletedBy;
+    if (paperUsage !== undefined) updateFields.paperUsage = paperUsage;
+    if (challanProof !== undefined) updateFields.challanProof = challanProof;
 
     const jobCard = await JobCard.findByIdAndUpdate(
       req.params.id,
@@ -314,6 +316,38 @@ router.patch('/:id/workflow', async (req, res) => {
       console.error("Notif Error:", nErr.message);
     }
 
+    res.json(jobCard);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/jobcard/:id/paper-usage - Update paper usage status & history
+router.patch('/:id/paper-usage', async (req, res) => {
+  try {
+    const { paperUsage } = req.body;
+    const jobCard = await JobCard.findByIdAndUpdate(
+      req.params.id,
+      { paperUsage, updatedAt: new Date() },
+      { new: true }
+    );
+    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
+    res.json(jobCard);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/jobcard/:id/challan-proof - Update challan proof image
+router.patch('/:id/challan-proof', async (req, res) => {
+  try {
+    const { challanProof } = req.body;
+    const jobCard = await JobCard.findByIdAndUpdate(
+      req.params.id,
+      { challanProof, updatedAt: new Date() },
+      { new: true }
+    );
+    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
     res.json(jobCard);
   } catch (err) {
     res.status(500).json({ error: err.message });
