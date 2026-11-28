@@ -85,6 +85,11 @@ const jobCardSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   notes: { type: String },
 
+  // Workflow Pipeline Tracking
+  workflowStep: { type: Number, default: 0 },
+  workflowStatus: { type: String, default: 'pending', enum: ['pending', 'in-progress', 'completed'] },
+  workflowCompletedBy: { type: mongoose.Schema.Types.Mixed, default: {} },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });

@@ -285,6 +285,41 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// PATCH /api/jobcard/:id/workflow - Update workflow step and status
+router.patch('/:id/workflow', async (req, res) => {
+  try {
+    const { workflowStep, workflowStatus, workflowCompletedBy } = req.body;
+    const updateFields = { updatedAt: new Date() };
+
+    if (workflowStep !== undefined) updateFields.workflowStep = Number(workflowStep);
+    if (workflowStatus !== undefined) updateFields.workflowStatus = workflowStatus;
+    if (workflowCompletedBy !== undefined) updateFields.workflowCompletedBy = workflowCompletedBy;
+
+    const jobCard = await JobCard.findByIdAndUpdate(
+      req.params.id,
+      updateFields,
+      { new: true }
+    );
+
+    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
+
+    // Optional notification
+    try {
+      const newNotif = new Notification({
+        type: 'JOB_UPDATED',
+        message: `Workflow updated for Job #${jobCard.jobNumber}: Step ${jobCard.workflowStep}`
+      });
+      await newNotif.save();
+    } catch (nErr) {
+      console.error("Notif Error:", nErr.message);
+    }
+
+    res.json(jobCard);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/jobcard/:id/price - Update only the price/totalAmount
 router.patch('/:id/price', async (req, res) => {
   try {
