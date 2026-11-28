@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, Clock } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, Clock } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
@@ -221,36 +221,32 @@ export default function JobCardListing() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Workflow Progress Modal States
-  const [workflowCard, setWorkflowCard] = useState(null);
-  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  // Inline expanded progress line per card { [cardId]: true / false }
+  const [expandedWorkflowCardIds, setExpandedWorkflowCardIds] = useState({});
   const [isUpdatingWorkflow, setIsUpdatingWorkflow] = useState(false);
 
-  const openWorkflowModal = (card) => {
-    setWorkflowCard(card);
-    setIsWorkflowModalOpen(true);
+  const toggleWorkflowExpand = (cardId) => {
+    setExpandedWorkflowCardIds((prev) => ({
+      ...prev,
+      [cardId]: !prev[cardId],
+    }));
   };
 
-  const closeWorkflowModal = () => {
-    setIsWorkflowModalOpen(false);
-    setWorkflowCard(null);
-  };
-
-  const handleWorkflowStepChange = async (newStepNo, stepData) => {
-    if (!workflowCard) return;
+  const handleCardWorkflowStepChange = async (card, newStepNo, stepData) => {
+    if (!card) return;
 
     const totalSteps = DEFAULT_WORKFLOW_STEPS.length;
     const newStatus = newStepNo >= totalSteps ? 'completed' : newStepNo > 0 ? 'in-progress' : 'pending';
 
-    const prevCompletedBy = workflowCard.workflowCompletedBy || {};
+    const prevCompletedBy = card.workflowCompletedBy || {};
     const updatedCompletedBy = { ...prevCompletedBy };
 
-    if (newStepNo > (workflowCard.workflowStep || 0)) {
+    if (newStepNo > (card.workflowStep || 0)) {
       updatedCompletedBy[newStepNo] = {
-        name: 'Admin',
+        name: 'Aakash Sharma',
         at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
-    } else if (newStepNo < (workflowCard.workflowStep || 0)) {
+    } else if (newStepNo < (card.workflowStep || 0)) {
       // If undone, remove higher steps
       for (let s = newStepNo + 1; s <= totalSteps; s++) {
         delete updatedCompletedBy[s];
@@ -258,18 +254,17 @@ export default function JobCardListing() {
     }
 
     const updatedCard = {
-      ...workflowCard,
+      ...card,
       workflowStep: newStepNo,
       workflowStatus: newStatus,
       workflowCompletedBy: updatedCompletedBy,
     };
 
-    setWorkflowCard(updatedCard);
-    setJobCards((prev) => prev.map((c) => (c._id === workflowCard._id ? updatedCard : c)));
+    setJobCards((prev) => prev.map((c) => (c._id === card._id ? updatedCard : c)));
 
     try {
       setIsUpdatingWorkflow(true);
-      await fetch(`${API_BASE_URL}/api/jobcard/${workflowCard._id}/workflow`, {
+      await fetch(`${API_BASE_URL}/api/jobcard/${card._id}/workflow`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -448,14 +443,16 @@ export default function JobCardListing() {
                           {card.jobNumber || '-'}
                         </span>
                       )}
-                      <div className="flex items-center gap-0.5">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => openWorkflowModal(card)}
-                          className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
-                          title="View Workflow Progress"
+                          onClick={() => toggleWorkflowExpand(card._id)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            expandedWorkflowCardIds[card._id] ? 'text-amber-600 bg-amber-50' : 'text-amber-500 hover:text-amber-700 hover:bg-amber-50'
+                          }`}
+                          title={expandedWorkflowCardIds[card._id] ? "Hide Workflow Progress" : "View Workflow Progress"}
                           aria-label="Workflow Progress"
                         >
-                          <Eye size={17} />
+                          {expandedWorkflowCardIds[card._id] ? <EyeOff size={17} /> : <Eye size={17} />}
                         </button>
                         <button
                           onClick={() => openPreview(card)}
@@ -484,6 +481,18 @@ export default function JobCardListing() {
                       </div>
                     </div>
                   </div>
+
+                  {expandedWorkflowCardIds[card._id] && (
+                    <div className="mt-3 pt-2 border-t border-gray-100 overflow-x-auto">
+                      <WorkflowProgressLine
+                        currentStep={card.workflowStep || 0}
+                        onStepChange={(newStep, stepData) => handleCardWorkflowStepChange(card, newStep, stepData)}
+                        completedByMap={card.workflowCompletedBy || {}}
+                        canEdit={true}
+                        timeLeftDays={5}
+                      />
+                    </div>
+                  )}
                 </article>
               );})}
             </div>
@@ -509,7 +518,7 @@ export default function JobCardListing() {
               {columnVisibility.lamination && <col style={{ width: '7%' }} />}
               {columnVisibility.binding && <col style={{ width: '8%' }} />}
               {columnVisibility.createdAt && <col style={{ width: '9%' }} />}
-              <col style={{ width: '68px' }} />
+              <col style={{ width: '150px' }} />
             </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100 uppercase tracking-wide text-[10px]">
@@ -539,8 +548,12 @@ export default function JobCardListing() {
                   </td>
                 </tr>
               ) : (
-                filteredCards.map((card, index) => (
-                  <tr key={card._id} className="border-b last:border-0 border-gray-50 hover:bg-gray-50 transition-colors">
+                filteredCards.map((card, index) => {
+                  const isExpanded = !!expandedWorkflowCardIds[card._id];
+                  const totalCols = 2 + Object.values(columnVisibility).filter(Boolean).length;
+                  return (
+                    <React.Fragment key={card._id}>
+                      <tr className={`border-b border-gray-100 hover:bg-gray-50/70 transition-colors ${isExpanded ? 'bg-amber-50/15' : ''}`}>
                     <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">{index + 1}</td>
                     {columnVisibility.partyName && (
                       <td className="py-2.5 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-relaxed">{card.partyName}</td>
@@ -610,40 +623,62 @@ export default function JobCardListing() {
                         <span className="block text-[10px] text-indigo-500 mt-0.5">{formatShortDateTime(card.createdAt).time}</span>
                       </td>
                     )}
-                    <td className="py-2 px-0.5 align-top">
-                      <div className="flex items-center justify-center gap-0.5">
+                    <td className="py-2 px-1 align-middle">
+                      <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] font-medium border border-gray-200">
+                          {card.workflowCompletedBy?.[card.workflowStep]?.name || card.workflowCompletedBy?.[1]?.name || 'Aakash Sharma'}
+                        </span>
                         <button
-                          onClick={() => openWorkflowModal(card)}
-                          className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 p-0.5 rounded transition-colors focus:outline-none"
-                          title="View Progress Line"
+                          onClick={() => toggleWorkflowExpand(card._id)}
+                          className={`p-1 rounded transition-colors focus:outline-none ${
+                            isExpanded ? 'text-amber-600 bg-amber-50' : 'text-amber-500 hover:text-amber-700 hover:bg-amber-50'
+                          }`}
+                          title={isExpanded ? 'Hide Progress Line' : 'View Progress Line'}
                         >
-                          <Eye size={13} />
+                          {isExpanded ? <EyeOff size={14} className="text-amber-500" /> : <Eye size={14} className="text-amber-500" />}
                         </button>
                         <button
                           onClick={() => openPreview(card)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
+                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors focus:outline-none"
                           title="Print Preview"
                         >
-                          <Printer size={13} />
+                          <Printer size={14} />
                         </button>
                         <button
                           onClick={() => navigate('/job-card', { state: { editData: card } })}
-                          className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
+                          className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-1 rounded transition-colors focus:outline-none"
                           title="Edit"
                         >
-                          <Pencil size={13} />
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(card._id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors focus:outline-none"
                           title="Delete"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
+                  {isExpanded && (
+                    <tr className="bg-white border-b border-gray-200">
+                      <td colSpan={totalCols} className="p-0">
+                        <div className="border-t border-b border-gray-100 bg-[#fdfdfd] shadow-2xs">
+                          <WorkflowProgressLine
+                            currentStep={card.workflowStep || 0}
+                            onStepChange={(newStep, stepData) => handleCardWorkflowStepChange(card, newStep, stepData)}
+                            completedByMap={card.workflowCompletedBy || {}}
+                            canEdit={true}
+                            timeLeftDays={5}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+                );
+              })
               )}
             </tbody>
           </table>
@@ -869,110 +904,6 @@ export default function JobCardListing() {
         title="Are you sure?"
         message="Are you sure you want to move to trash?"
       />
-
-      {/* Workflow Progress Stepper Modal */}
-      {isWorkflowModalOpen && workflowCard && (
-        <div className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                  <Eye size={20} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-lg font-black text-gray-900">
-                      Job Workflow Progress
-                    </h2>
-                    {workflowCard.jobNumber && (
-                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs font-black uppercase ring-1 ring-blue-100">
-                        #{workflowCard.jobNumber}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 font-medium">
-                    Party: <strong className="text-gray-800">{workflowCard.partyName}</strong> &bull; Job: <strong className="text-gray-800">{workflowCard.jobName || 'Printing Work'}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={closeWorkflowModal}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                title="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-6 space-y-6">
-              {/* Job Meta Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/70 p-3.5 rounded-xl border border-gray-200/80 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Job Date</span>
-                  <span className="font-bold text-gray-800">{formatShortDate(workflowCard.jobDate || workflowCard.createdAt)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Quantity</span>
-                  <span className="font-black text-blue-700">{workflowCard.jobQty || 1}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Size / Paper</span>
-                  <span className="font-bold text-gray-800 truncate block">
-                    {workflowCard.pageSize || '-'}{workflowCard.paper ? ` &bull; ${workflowCard.paper}` : ''}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Current Status</span>
-                  <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
-                    (workflowCard.workflowStep || 0) >= 4
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : (workflowCard.workflowStep || 0) > 0
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-amber-50 text-amber-700 border-amber-200'
-                  }`}>
-                    {(workflowCard.workflowStep || 0) >= 4
-                      ? 'Completed'
-                      : (workflowCard.workflowStep || 0) > 0
-                      ? `In Progress (${workflowCard.workflowStep}/4)`
-                      : 'Pending'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress Line Component */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-                <WorkflowProgressLine
-                  currentStep={workflowCard.workflowStep || 0}
-                  onStepChange={handleWorkflowStepChange}
-                  completedByMap={workflowCard.workflowCompletedBy || {}}
-                  showOverallStatus={true}
-                  canEdit={true}
-                />
-              </div>
-
-              {isUpdatingWorkflow && (
-                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-blue-600 animate-pulse">
-                  <Loader2 size={14} className="animate-spin" />
-                  Saving workflow progress...
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 sm:p-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
-              <button
-                type="button"
-                onClick={closeWorkflowModal}
-                className="px-5 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-xl transition shadow-xs"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

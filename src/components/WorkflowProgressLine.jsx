@@ -1,212 +1,260 @@
 import React, { useMemo } from 'react';
-import { Check, Clock, AlertCircle, ArrowRight } from 'lucide-react';
+import { Check, Settings, Image as ImageIcon } from 'lucide-react';
 
 /**
- * Default workflow steps tailored for printing & signage workflow
+ * 4 Main steps matching user screenshot
  */
 export const DEFAULT_WORKFLOW_STEPS = [
-  { id: 1, title: 'Design & Proof', desc: 'Artwork & client approval', role: 'Designer' },
-  { id: 2, title: 'Printing', desc: 'Plate making & print production', role: 'Machine Operator' },
-  { id: 3, title: 'Binding & Finish', desc: 'Cutting, folding & binding', role: 'Binder' },
-  { id: 4, title: 'QC & Delivery', desc: 'Quality check & dispatch', role: 'Dispatcher' },
+  { id: 1, title: 'Design & Proof', desc: 'Artwork, design & client approval' },
+  { id: 2, title: 'Printing', desc: 'Plate making & print production' },
+  { id: 3, title: 'Binding & Finish', desc: 'Cutting, folding & binding' },
+  { id: 4, title: 'QC & Delivery', desc: 'Quality check, packing & dispatch' },
 ];
 
 /**
- * Interactive, Modern Multi-step Workflow Progress Stepper Component
+ * Modern Multi-step Workflow Progress Stepper (Exact match to User Screenshot)
  *
- * @param {Array} steps - List of steps [{ id, title, desc, role }]
- * @param {number} currentStep - Number of completed steps (0 = none, 1..N)
- * @param {Function} onStepChange - Callback: (newStepNo, stepData) => void
- * @param {Object} completedByMap - Record of step number to completed by details { 1: "Rahul", 2: { name: "Admin", at: "12:30 PM" } }
- * @param {boolean} canEdit - Whether user is permitted to toggle/advance steps
- * @param {Function} beforeStepChange - Optional async/sync validation hook: (targetStep, currentStep) => boolean | Promise<boolean>
- * @param {React.ReactNode} customMiddleNode - Optional middle element (e.g., file upload badge, timeline)
- * @param {boolean} showOverallStatus - Whether to display top summary status badge (Pending / In Progress / Completed)
- * @param {string} className - Optional wrapper CSS class
+ * Visual Features:
+ * - Clean light grey continuous track
+ * - Steps 1, 2, 3, 4 with blue active ring & filled states
+ * - Inter-step nodes: "PAPER" with gear icon, "CHALLAN PROOF" with image icon
+ * - Pill action buttons "MARK DONE" / "UNDO"
+ * - Right side "TIME LEFT" card (e.g. 5 days) with pink/red styling
  */
 export default function WorkflowProgressLine({
   steps = DEFAULT_WORKFLOW_STEPS,
-  currentStep = 0,
-  onStepChange,
-  completedByMap = {},
+  currentStep = 0,               // e.g. 0 = none, 1 = Step 1 done, etc.
+  onStepChange,                  // Callback: (newStepNo, stepData) => void
+  completedByMap = {},           // Optional: { 1: "Aakash Sharma" }
   canEdit = true,
-  beforeStepChange = null,
-  customMiddleNode = null,
-  showOverallStatus = false,
+  timeLeftDays = 5,              // Optional time left counter
+  onPaperNodeClick = null,       // Optional click on PAPER gear node
+  onChallanProofClick = null,    // Optional click on CHALLAN PROOF node
   className = '',
 }) {
   const totalSteps = steps.length;
 
-  // Auto calculate overall pipeline status
-  const overallStatus = useMemo(() => {
-    if (currentStep <= 0) return { key: 'pending', label: 'Pending', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-    if (currentStep >= totalSteps) return { key: 'completed', label: 'Completed', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    return { key: 'in-progress', label: `In Progress (${currentStep}/${totalSteps})`, color: 'bg-blue-50 text-blue-700 border-blue-200' };
-  }, [currentStep, totalSteps]);
-
-  // Percentage for the active green fill line
-  const progressPercent = useMemo(() => {
-    if (totalSteps <= 1) return currentStep > 0 ? 100 : 0;
-    const completedRatio = Math.min(Math.max(currentStep - 1, 0), totalSteps - 1) / (totalSteps - 1);
-    return currentStep === 0 ? 0 : Math.round(completedRatio * 100);
-  }, [currentStep, totalSteps]);
-
-  const handleStepClick = async (stepNo) => {
+  const handleStepClick = (stepNo) => {
     if (!canEdit || !onStepChange) return;
-
     // Toggle behavior: clicking active/completed step undoes, clicking pending advances
     const targetStep = currentStep === stepNo ? stepNo - 1 : stepNo;
-
-    // Optional validation hook check
-    if (typeof beforeStepChange === 'function') {
-      try {
-        const allowed = await beforeStepChange(targetStep, currentStep, steps[stepNo - 1]);
-        if (!allowed) return;
-      } catch (err) {
-        console.warn('Step validation prevented progression:', err);
-        return;
-      }
-    }
-
     onStepChange(targetStep, steps[targetStep - 1] || null);
   };
 
   return (
-    <div className={`w-full py-3 px-2 ${className}`}>
-      {/* Optional Top Status Bar */}
-      {showOverallStatus && (
-        <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-100 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-700">Workflow Status:</span>
-            <span className={`px-2.5 py-0.5 rounded-full font-black uppercase text-[10px] border ${overallStatus.color}`}>
-              {overallStatus.label}
+    <div className={`w-full py-4 px-3 sm:px-6 bg-white select-none ${className}`}>
+      <div className="flex items-center justify-between gap-4 overflow-x-auto pb-2">
+        {/* Main Steps Pipeline Line Wrap */}
+        <div className="relative flex-1 min-w-[700px] flex items-start justify-between px-6 pt-1">
+          {/* Background Connecting Line */}
+          <div className="absolute left-[8%] right-[8%] top-[19px] h-[2px] bg-gray-200 z-0" />
+
+          {/* STEP 1: Design & Proof */}
+          <div className="relative z-10 flex flex-col items-center text-center w-36">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => handleStepClick(1)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-sm ${
+                canEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
+              } ${
+                currentStep >= 1
+                  ? 'bg-emerald-500 text-white ring-4 ring-emerald-100'
+                  : currentStep === 0
+                  ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}
+            >
+              {currentStep >= 1 ? <Check size={16} strokeWidth={3.5} /> : '1'}
+            </button>
+            <p className="mt-2.5 text-xs font-black text-gray-900 leading-tight">
+              Design &amp; Proof
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400 font-medium leading-tight">
+              Artwork, design &amp; client approval
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => handleStepClick(1)}
+                className={`mt-2.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                  currentStep >= 1
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                {currentStep >= 1 ? 'Undo' : 'MARK DONE'}
+              </button>
+            )}
+          </div>
+
+          {/* STEP 2: Printing */}
+          <div className="relative z-10 flex flex-col items-center text-center w-36">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => handleStepClick(2)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-sm ${
+                canEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
+              } ${
+                currentStep >= 2
+                  ? 'bg-emerald-500 text-white ring-4 ring-emerald-100'
+                  : currentStep === 1
+                  ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}
+            >
+              {currentStep >= 2 ? <Check size={16} strokeWidth={3.5} /> : '2'}
+            </button>
+            <p className="mt-2.5 text-xs font-black text-gray-900 leading-tight">
+              Printing
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400 font-medium leading-tight">
+              Plate making &amp; print production
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => handleStepClick(2)}
+                className={`mt-2.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                  currentStep >= 2
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : currentStep === 1
+                    ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {currentStep >= 2 ? 'Undo' : 'MARK DONE'}
+              </button>
+            )}
+          </div>
+
+          {/* MIDDLE NODE: PAPER (Gear Icon) */}
+          <div className="relative z-10 flex flex-col items-center text-center w-20 pt-0.5">
+            <button
+              type="button"
+              onClick={onPaperNodeClick}
+              title="Paper Details"
+              className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-xs flex items-center justify-center text-blue-500 hover:text-blue-700 hover:border-blue-300 transition-all hover:scale-105 cursor-pointer"
+            >
+              <Settings size={15} />
+            </button>
+            <span className="mt-2.5 text-[9px] font-black uppercase text-gray-400 tracking-wider">
+              PAPER
             </span>
           </div>
-          <span className="text-gray-400 font-semibold text-[11px]">
-            {currentStep} of {totalSteps} Steps Complete
-          </span>
-        </div>
-      )}
 
-      {/* Stepper Pipeline Visual */}
-      <div className="overflow-x-auto pb-2">
-        <div className="relative flex items-start justify-between min-w-[560px] px-4 pt-1">
-          {/* Base Background Connecting Line */}
-          <div className="absolute left-[10%] right-[10%] top-5.5 h-[3px] bg-gray-200 z-0 rounded-full" />
-
-          {/* Active Completed Filled Line (Green) */}
-          <div
-            className="absolute left-[10%] top-5.5 h-[3px] bg-emerald-500 z-0 transition-all duration-300 rounded-full"
-            style={{
-              width: totalSteps > 1
-                ? `calc(${Math.min(currentStep, totalSteps) / (totalSteps - 1) * 80}% * 1)`
-                : currentStep > 0 ? '80%' : '0%',
-              maxWidth: '80%',
-            }}
-          />
-
-          {/* Optional custom middle node (e.g. Upload icon or Inspector Tag) */}
-          {customMiddleNode && (
-            <div className="absolute left-1/2 top-5 -translate-x-1/2 -translate-y-1/2 z-20">
-              {customMiddleNode}
-            </div>
-          )}
-
-          {/* Steps Loop */}
-          {steps.map((step, index) => {
-            const stepNo = index + 1;
-            const isDone = currentStep >= stepNo;
-            const isActive = currentStep + 1 === stepNo;
-            const completedByData = completedByMap[stepNo];
-            const completedByName = typeof completedByData === 'object' ? completedByData?.name : completedByData;
-
-            return (
-              <div
-                key={step.id || step.title || index}
-                className="relative z-10 flex flex-col items-center text-center flex-1 group"
+          {/* STEP 3: Binding & Finish */}
+          <div className="relative z-10 flex flex-col items-center text-center w-36">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => handleStepClick(3)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-sm ${
+                canEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
+              } ${
+                currentStep >= 3
+                  ? 'bg-emerald-500 text-white ring-4 ring-emerald-100'
+                  : currentStep === 2
+                  ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}
+            >
+              {currentStep >= 3 ? <Check size={16} strokeWidth={3.5} /> : '3'}
+            </button>
+            <p className="mt-2.5 text-xs font-black text-gray-900 leading-tight">
+              Binding &amp; Finish
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400 font-medium leading-tight">
+              Cutting, folding &amp; binding
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => handleStepClick(3)}
+                className={`mt-2.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                  currentStep >= 3
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : currentStep === 2
+                    ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                }`}
               >
-                {/* Step Indicator Circle */}
-                <button
-                  type="button"
-                  disabled={!canEdit}
-                  onClick={() => handleStepClick(stepNo)}
-                  title={`Step ${stepNo}: ${step.title} (${isDone ? 'Completed' : isActive ? 'In Progress' : 'Pending'})`}
-                  className={`relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shadow-xs transition-all duration-200 outline-none select-none ${
-                    canEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
-                  } ${
-                    isDone
-                      ? 'bg-emerald-500 text-white ring-4 ring-emerald-100 hover:ring-emerald-200 shadow-emerald-200'
-                      : isActive
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 hover:ring-blue-200 animate-pulse-subtle shadow-blue-200'
-                      : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-gray-300'
-                  }`}
-                >
-                  {isDone ? (
-                    <Check size={16} strokeWidth={3} className="animate-in zoom-in-50 duration-150" />
-                  ) : (
-                    <span>{stepNo}</span>
-                  )}
-                </button>
+                {currentStep >= 3 ? 'Undo' : 'MARK DONE'}
+              </button>
+            )}
+          </div>
 
-                {/* Step Title */}
-                <p
-                  onClick={() => canEdit && handleStepClick(stepNo)}
-                  className={`mt-2.5 text-xs font-black tracking-tight leading-snug max-w-[130px] transition-colors ${
-                    isDone ? 'text-emerald-900' : isActive ? 'text-blue-700' : 'text-gray-700'
-                  } ${canEdit ? 'cursor-pointer hover:underline' : ''}`}
-                >
-                  {step.title}
-                </p>
+          {/* MIDDLE NODE: CHALLAN PROOF (Image icon) */}
+          <div className="relative z-10 flex flex-col items-center text-center w-24 pt-0.5">
+            <button
+              type="button"
+              onClick={onChallanProofClick}
+              title="Challan Proof Document"
+              className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-xs flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all hover:scale-105 cursor-pointer"
+            >
+              <ImageIcon size={15} />
+            </button>
+            <span className="mt-2.5 text-[9px] font-black uppercase text-gray-400 tracking-wider">
+              CHALLAN PROOF
+            </span>
+          </div>
 
-                {/* Step Subtitle / Description */}
-                {step.desc && (
-                  <p className="mt-0.5 text-[10px] text-gray-400 font-medium leading-tight max-w-[120px] line-clamp-2">
-                    {step.desc}
-                  </p>
-                )}
+          {/* STEP 4: QC & Delivery */}
+          <div className="relative z-10 flex flex-col items-center text-center w-36">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => handleStepClick(4)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-sm ${
+                canEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
+              } ${
+                currentStep >= 4
+                  ? 'bg-emerald-500 text-white ring-4 ring-emerald-100'
+                  : currentStep === 3
+                  ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}
+            >
+              {currentStep >= 4 ? <Check size={16} strokeWidth={3.5} /> : '4'}
+            </button>
+            <p className="mt-2.5 text-xs font-black text-gray-900 leading-tight">
+              QC &amp; Delivery
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400 font-medium leading-tight">
+              Quality check, packing &amp; dispatch
+            </p>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => handleStepClick(4)}
+                className={`mt-2.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                  currentStep >= 4
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : currentStep === 3
+                    ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {currentStep >= 4 ? 'Undo' : 'MARK DONE'}
+              </button>
+            )}
+          </div>
+        </div>
 
-                {/* Role indicator if present */}
-                {step.role && !completedByName && (
-                  <span className="mt-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-                    {step.role}
-                  </span>
-                )}
-
-                {/* Completed By Badge */}
-                {isDone && completedByName && (
-                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                    <Check size={10} strokeWidth={3} />
-                    {completedByName}
-                  </span>
-                )}
-
-                {/* In-Progress indicator badge */}
-                {isActive && !isDone && (
-                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase bg-blue-50 text-blue-600 border border-blue-200">
-                    <Clock size={10} />
-                    Current
-                  </span>
-                )}
-
-                {/* Action Button: Mark Done / Undo */}
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => handleStepClick(stepNo)}
-                    className={`mt-2.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-150 border shadow-2xs active:scale-95 ${
-                      isDone
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-                        : isActive
-                        ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    {isDone ? 'Undo' : isActive ? 'Complete' : 'Mark Done'}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+        {/* TIME LEFT Badge Card (Matching user screenshot) */}
+        <div className="shrink-0 pl-2 pr-2">
+          <div className="w-24 h-24 rounded-2xl bg-red-50/70 border border-red-100 flex flex-col items-center justify-center text-center shadow-2xs">
+            <span className="text-[10px] font-black text-rose-600 tracking-wider uppercase">
+              TIME LEFT
+            </span>
+            <span className="text-3xl font-black text-rose-600 leading-none my-0.5">
+              {timeLeftDays}
+            </span>
+            <span className="text-[10px] font-bold text-rose-500 lowercase">
+              days
+            </span>
+          </div>
         </div>
       </div>
     </div>
