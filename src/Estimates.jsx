@@ -31,6 +31,7 @@ import {
   getEstimateHalfColSpans,
   EstimateItemsBlock,
 } from './utils/taxDocumentPrint';
+import CategoryEstimateItemsTable, { getEstimateCategory, getCategoryColCount, CategoryEstimateColGroup } from './components/CategoryEstimateItemsTable';
 import { API_BASE_URL } from './utils/apiBase';
 
 const formatQuoteDate = (value) => {
@@ -257,8 +258,10 @@ export default function Estimates() {
   const printPaymentType = selectedEstimate?.paymentType || '—';
   const partyAddress = selectedEstimate?.partyAddress || selectedEstimate?.address || '';
   const partyGst = selectedEstimate?.partyGst || selectedEstimate?.gstNo || 'URP';
-  const estHalfColSpan = getEstimateHalfColSpans().left;
-  const estHalfColSpanRight = getEstimateHalfColSpans().right;
+  const effectiveCategory = selectedEstimate ? getEstimateCategory(selectedEstimate) : 'FLEX';
+  const totalTableCols = getCategoryColCount(effectiveCategory);
+  const estHalfColSpan = Math.floor(totalTableCols / 2);
+  const estHalfColSpanRight = totalTableCols - estHalfColSpan;
 
   return (
     <div className="w-full min-w-0 max-w-full mt-8 pb-12 animate-in fade-in duration-500 overflow-x-hidden">
@@ -492,10 +495,10 @@ export default function Estimates() {
                 className={`tax-invoice-print-page estimate-print-page bg-white w-full shadow-none${compactPrint ? ' tax-print-compact' : ''}`}
               >
                 <table className="tax-invoice w-full border-collapse text-black" style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                  <EstimateColGroup />
+                  <CategoryEstimateColGroup category={effectiveCategory} />
                   <tbody>
                     <tr>
-                      <td colSpan={ESTIMATE_COL_COUNT} className="tax-cell text-center align-middle py-2">
+                      <td colSpan={totalTableCols} className="tax-cell text-center align-middle py-2">
                         <CompanyBrandName uppercase />
                         <p className="tax-header-line">{SELLER.address}</p>
                         <p className="tax-header-line">{SELLER.tel}, {SELLER.email}</p>
@@ -504,9 +507,9 @@ export default function Estimates() {
                     </tr>
 
                     <tr>
-                      <td colSpan={ESTIMATE_COL_COUNT} className="tax-cell tax-blue p-0">
+                      <td colSpan={totalTableCols} className="tax-cell tax-blue p-0">
                         <div className="tax-title-bar">
-                          <div className="tax-title-text">ESTIMATE &amp; QUOTATION</div>
+                          <div className="tax-title-text">{effectiveCategory.toUpperCase()} ESTIMATE &amp; QUOTATION</div>
                         </div>
                       </td>
                     </tr>
@@ -560,9 +563,9 @@ export default function Estimates() {
                       </td>
                     </tr>
 
-                    <EstimateItemsBlock
-                      items={printItems}
-                      emptyProductRows={emptyPrintRows}
+                    <CategoryEstimateItemsTable
+                      estimate={selectedEstimate}
+                      fallbackItems={printItems}
                       freight={printFreight}
                       gstAmount={printGstAmount}
                       gstType={printGstType}
